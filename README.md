@@ -43,11 +43,10 @@ git-diff --cached
 # Copy all changes (staged + unstaged) to clipboard
 git-diff --all
 
-# Copy changes for specific files
-git-diff file1.txt src/file2.js
-
-# Copy staged changes for specific files
-git-diff --cached file1.txt src/file2.js
+# Copy changes and save to file
+git-diff --file  # or -f
+git-diff --cached --file file1.txt
+git-diff --all -f src/*.js
 
 # Copy all changes for specific files
 git-diff --all file1.txt src/file2.js
@@ -72,6 +71,21 @@ git-diff --all file1.txt src/file2.js
    cd your-repo
    git-diff --all
    ```
+
+4. When you want to share changes for specific files:
+   ```batch
+   cd your-repo
+   git-diff src/main.js test/utils.js
+   ```
+
+5. When you want to share staged changes for specific files:
+   ```batch
+   cd your-repo
+   git-diff --cached config.json src/*.ts
+   ```
+
+Note: You can use wildcards and paths in file specifications, following Git's standard pattern
+matching.
 
 ## Error Handling
 
