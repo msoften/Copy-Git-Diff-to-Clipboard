@@ -1,21 +1,11 @@
 @echo off
-REM @batdoc Title: Git Diff to Clipboard
-REM @batdoc Description: This script copies the Git diff output to the clipboard.
-REM @batdoc Usage: git-diff.bat [--cached | --all] [file1 file2 ...]
-REM @batdoc Parameters:
-REM @batdoc --cached  Show the diff for staged changes
-REM @batdoc --all     Show the diff for all changes (including staged and unstaged)
-REM @batdoc file1, file2, ... Optional file paths to get diff for specific files
-REM @batdoc Example: git-diff.bat --cached file1.txt src/file2.js
-
 setlocal enabledelayedexpansion
 
-REM Check if the current directory is a Git repository
+REM Check if Git repository
 git rev-parse --is-inside-work-tree >nul 2>&1
 if %errorlevel% neq 0 (
-    REM @batdoc Error: This directory is not a Git repository.
     echo This is not a Git repository. Exiting...
-    exit /b
+    exit /b 1
 )
 
 REM Initialize variables
@@ -24,7 +14,7 @@ set "files="
 
 REM Parse arguments
 :parse_args
-if "%1"=="" goto execute_diff
+if "%1"=="" goto check_diff
 if "%1"=="--cached" (
     set "diff_type=--cached"
     shift
@@ -43,36 +33,60 @@ if "%1"=="--cached" (
     goto parse_args
 )
 
-:execute_diff
-REM Execute git diff based on arguments
-if "%diff_type%"=="--cached" (
-    REM @batdoc Action: Show the staged changes for specified files.
-    if defined files (
-        git diff --cached !files! | clip
-    ) else (
-        git diff --cached | clip
-    )
-) else if "%diff_type%"=="HEAD" (
-    REM @batdoc Action: Show the diff for all changes for specified files.
-    if defined files (
-        git diff HEAD !files! | clip
-    ) else (
-        git diff HEAD | clip
-    )
-) else (
-    REM @batdoc Action: Show the unstaged changes for specified files.
-    if defined files (
-        git diff !files! | clip
-    ) else (
-        git diff | clip
+:check_diff
+set "temp_file=%TEMP%\git_diff_temp.txt"
+
+REM Check if files are untracked
+if defined files (
+    git ls-files --error-unmatch !files! >nul 2>&1
+    if !errorlevel! neq 0 (
+        echo Some specified files are untracked. Add them first using: git add ^<file^>
+        exit /b 1
     )
 )
 
-REM Provide feedback to the user
-if defined files (
-    echo Git diff for specified files copied to clipboard!
+REM Get diff output
+if "%diff_type%"=="--cached" (
+    if defined files (
+        git diff --cached !files! > "%temp_file%"
+    ) else (
+        git diff --cached > "%temp_file%"
+    )
+) else if "%diff_type%"=="HEAD" (
+    if defined files (
+        git diff HEAD !files! > "%temp_file%"
+    ) else (
+        git diff HEAD > "%temp_file%"
+    )
 ) else (
-    echo Git diff copied to clipboard!
+    if defined files (
+        git diff !files! > "%temp_file%"
+    ) else (
+        git diff > "%temp_file%"
+    )
+)
+
+REM Check for changes
+for %%I in ("%temp_file%") do set "size=%%~zI"
+if !size! equ 0 (
+    if defined files (
+        echo No changes found for specified files
+    ) else (
+        echo No changes found
+    )
+    del "%temp_file%"
+    exit /b 1
+)
+
+REM Copy to clipboard and cleanup
+type "%temp_file%" | clip
+del "%temp_file%"
+
+REM Show feedback
+if defined files (
+    echo Git diff for specified files copied to clipboard
+) else (
+    echo Git diff copied to clipboard
 )
 
 endlocal
